@@ -1,0 +1,30 @@
+{
+  "name": "a-stock-forecast",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "lint:frontend": "cd frontend && pnpm run lint",
+    "lint:backend": "cd server && uv run ruff check .",
+    "format:frontend": "cd frontend && pnpm run format",
+    "format:backend": "cd server && uv run ruff format ."
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx,js,jsx}": [
+      "cd frontend && pnpm exec eslint --fix",
+      "cd frontend && pnpm exec prettier --write"
+    ],
+    "frontend/**/*.{json,css,md}": [
+      "cd frontend && pnpm exec prettier --write"
+    ],
+    "server/**/*.py": [
+      "cd server && uv run ruff check --fix",
+      "cd server && uv run ruff format"
+    ],
+    "server/app/model/**": []
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  }
+}

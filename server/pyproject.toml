@@ -1,0 +1,40 @@
+[project]
+name = "a-stock-forecast-server"
+version = "0.1.0"
+description = "A股K线预测后端服务"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "akshare>=1.15.0",
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "sse-starlette>=2.0.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "sentencepiece>=0.2.1",
+    "huggingface-hub>=1.13.0",
+    "safetensors>=0.7.0",
+    "einops>=0.7.0",
+    "tqdm>=4.65.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["app", "scripts"]
+exclude = ["app/model"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

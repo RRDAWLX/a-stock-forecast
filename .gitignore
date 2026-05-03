@@ -1,0 +1,14 @@
+node_modules
+dist
+.vite
+*.local
+server/data/search_history.json
+server/models/
+server/models_tokenizer/
+server/models_download/
+server/.venv/
+__pycache__
+*.pyc
+.venv
+.next
+.DS_Store
