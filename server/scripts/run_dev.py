@@ -4,7 +4,6 @@
 """
 
 import uvicorn
-
 from app.config import BACKEND_PORT, FRONTEND_PORT
 
 if __name__ == "__main__":

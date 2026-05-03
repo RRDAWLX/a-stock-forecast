@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class Ohlcv(BaseModel):
     """单根 K 线的 OHLCV 数据（开高低收量额）。"""
+
     open: float
     high: float
     low: float
@@ -15,6 +16,7 @@ class Ohlcv(BaseModel):
 
 class StockResponse(BaseModel):
     """股票查询接口的完整响应，包含实际行情与预测数据。"""
+
     stock_name: str
     stock_code: str
     current_price: float
@@ -26,6 +28,10 @@ class StockResponse(BaseModel):
 
 class SearchHistoryItem(BaseModel):
     """搜索历史记录条目。"""
+
     code: str
     name: str
     time: str
+    realDataDays: int
+    predOutputDays: int
+    overlapDays: int

@@ -19,7 +19,16 @@ def load_history() -> list[SearchHistoryItem]:
     _ensure_file()
     try:
         data = json.loads(SEARCH_HISTORY_FILE.read_text(encoding="utf-8"))
-        return [SearchHistoryItem(**item) for item in data]
+        items = []
+        for item in data:
+            if "realDataDays" not in item:
+                item["realDataDays"] = 120
+            if "predOutputDays" not in item:
+                item["predOutputDays"] = 30
+            if "overlapDays" not in item:
+                item["overlapDays"] = 20
+            items.append(SearchHistoryItem(**item))
+        return items
     except (json.JSONDecodeError, Exception):
         return []
 
@@ -31,17 +40,30 @@ def save_history(items: list[SearchHistoryItem]) -> None:
     SEARCH_HISTORY_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def add_search_record(code: str, name: str) -> list[SearchHistoryItem]:
+def add_search_record(
+    code: str, name: str, real_data_days: int, pred_output_days: int, overlap_days: int
+) -> list[SearchHistoryItem]:
     """添加一条搜索记录（若已存在则移至首位），返回更新后的列表。"""
     items = load_history()
-    # 去重：如果同代码已存在则先移除
-    items = [item for item in items if item.code != code]
+    items = [
+        item
+        for item in items
+        if not (
+            item.code == code
+            and item.realDataDays == real_data_days
+            and item.predOutputDays == pred_output_days
+            and item.overlapDays == overlap_days
+        )
+    ]
     items.insert(
         0,
         SearchHistoryItem(
             code=code,
             name=name,
             time=datetime.now().isoformat(timespec="seconds"),
+            realDataDays=real_data_days,
+            predOutputDays=pred_output_days,
+            overlapDays=overlap_days,
         ),
     )
     save_history(items)

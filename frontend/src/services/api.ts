@@ -1,19 +1,31 @@
 /** API 请求封装：REST 获取股票数据 + SSE 获取搜索历史。 */
 import { StockResponse } from '@/types';
 
-// REST API 基础路径（通过 Next.js rewrite 代理到后端）
 const API_BASE = '/api';
-// SSE 基础路径（支持通过环境变量覆盖，用于直连后端场景）
 const SSE_BASE = process.env.NEXT_PUBLIC_SSE_BASE || '/api';
 
 const pendingStockRequests = new Map<string, Promise<StockResponse>>();
 
-/** 根据股票代码获取行情与预测数据（同一 code 自动去重） */
-export function fetchStock(code: string): Promise<StockResponse> {
-  const existing = pendingStockRequests.get(code);
+export interface KLineParams {
+  realDataDays: number;
+  predOutputDays: number;
+  overlapDays: number;
+}
+
+/** 根据股票代码和 K 线参数获取行情与预测数据（同一 code+params 自动去重） */
+export function fetchStock(code: string, params: KLineParams): Promise<StockResponse> {
+  const key = `${code}:${params.realDataDays}:${params.predOutputDays}:${params.overlapDays}`;
+  const existing = pendingStockRequests.get(key);
   if (existing) return existing;
 
-  const promise = fetch(`${API_BASE}/stock?code=${encodeURIComponent(code)}`)
+  const qs = new URLSearchParams({
+    code,
+    realDataDays: String(params.realDataDays),
+    predOutputDays: String(params.predOutputDays),
+    overlapDays: String(params.overlapDays),
+  }).toString();
+
+  const promise = fetch(`${API_BASE}/stock?${qs}`)
     .then(async (res) => {
       if (!res.ok) {
         const err = await res.text();
@@ -22,10 +34,10 @@ export function fetchStock(code: string): Promise<StockResponse> {
       return res.json();
     })
     .finally(() => {
-      pendingStockRequests.delete(code);
+      pendingStockRequests.delete(key);
     });
 
-  pendingStockRequests.set(code, promise);
+  pendingStockRequests.set(key, promise);
   return promise;
 }
 

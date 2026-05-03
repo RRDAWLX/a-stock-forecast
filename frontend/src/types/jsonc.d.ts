@@ -1,4 +1,4 @@
-declare module "jsonc" {
+declare module 'jsonc' {
   function parse(text: string): unknown;
   function readSync(filePath: string): unknown;
   function stripComments(text: string): string;

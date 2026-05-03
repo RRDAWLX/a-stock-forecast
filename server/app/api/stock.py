@@ -7,17 +7,39 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, model_validator
 
 from app.api.history import notify_clients
 from app.schemas.response import Ohlcv, StockResponse
-from app.config import OVERLAP_DAYS, REAL_DATA_DAYS
 from app.services import predictor, search_store, stock_data
 
 router = APIRouter(prefix="/api")
 
 
+class StockQueryParams(BaseModel):
+    """K 线查询参数，含跨字段校验。"""
+
+    code: str
+    realDataDays: int
+    predOutputDays: int
+    overlapDays: int
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> StockQueryParams:
+        if self.overlapDays > min(self.realDataDays, self.predOutputDays):
+            raise ValueError(
+                f"overlapDays({self.overlapDays}) 不能大于 realDataDays({self.realDataDays}) 和 predOutputDays({self.predOutputDays}) 中的较小值"
+            )
+        return self
+
+
 @router.get("/stock", response_model=StockResponse)
-async def get_stock(code: str = Query(..., description="股票代码")):
+async def get_stock(
+    code: str = Query(..., description="股票代码"),
+    realDataDays: int = Query(..., gt=0, description="实际K线天数"),
+    predOutputDays: int = Query(..., gt=0, description="预测K线天数"),
+    overlapDays: int = Query(..., ge=0, description="重叠天数"),
+):
     """
     查询股票行情并进行 K 线预测。
 
@@ -27,9 +49,15 @@ async def get_stock(code: str = Query(..., description="股票代码")):
     3. 拼接实际日期与预测日期（前配置天数重叠用于视觉衔接）
     4. 记录搜索历史并通过 SSE 推送给前端
     """
+    params = StockQueryParams(
+        code=code, realDataDays=realDataDays, predOutputDays=predOutputDays, overlapDays=overlapDays
+    )
+
     # 在线程池中执行同步的数据获取，避免阻塞事件循环
     try:
-        info: dict[str, Any] = await asyncio.to_thread(stock_data.fetch_stock_data, code)
+        info: dict[str, Any] = await asyncio.to_thread(
+            stock_data.fetch_stock_data, params.code, params.realDataDays
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
@@ -37,9 +65,14 @@ async def get_stock(code: str = Query(..., description="股票代码")):
 
     # 数据量充足时才进行预测
     raw_real: list[dict[str, float]] = info["real_data"]
-    if len(raw_real) >= REAL_DATA_DAYS - OVERLAP_DAYS:
+    if len(raw_real) >= params.realDataDays - params.overlapDays:
         raw_pred: list[dict[str, float]] = await asyncio.to_thread(
-            predictor.predict, raw_real, info["dates"]
+            predictor.predict,
+            raw_real,
+            info["dates"],
+            params.realDataDays,
+            params.predOutputDays,
+            params.overlapDays,
         )
     else:
         raw_pred = []
@@ -48,7 +81,7 @@ async def get_stock(code: str = Query(..., description="股票代码")):
     pred_data = [Ohlcv(**d) for d in raw_pred]
 
     # 计算预测日期，前 overlap 天与实际日期重叠，后续为未来工作日
-    overlap = min(OVERLAP_DAYS, len(real_data), len(pred_data))
+    overlap = min(params.overlapDays, len(real_data), len(pred_data))
     pred_dates: list[str] = []
     dates: list[str] = info["dates"]
     for i in range(len(pred_data)):
@@ -73,7 +106,14 @@ async def get_stock(code: str = Query(..., description="股票代码")):
 
     # 记录搜索历史并通知前端 SSE 客户端
     short_code = str(info["stock_code"]).split(".")[0]
-    await asyncio.to_thread(search_store.add_search_record, short_code, str(info["stock_name"]))
+    await asyncio.to_thread(
+        search_store.add_search_record,
+        short_code,
+        str(info["stock_name"]),
+        params.realDataDays,
+        params.predOutputDays,
+        params.overlapDays,
+    )
     notify_clients()
 
     return StockResponse(

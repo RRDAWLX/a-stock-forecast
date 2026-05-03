@@ -26,4 +26,7 @@ export interface SearchHistoryItem {
   code: string;
   name: string;
   time: string;
+  realDataDays: number;
+  predOutputDays: number;
+  overlapDays: number;
 }

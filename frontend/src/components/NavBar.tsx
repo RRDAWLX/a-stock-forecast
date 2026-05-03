@@ -19,7 +19,7 @@ export default function NavBar({ onAddClick, onSidebarToggle }: NavBarProps) {
         {onAddClick && (
           <button
             onClick={onAddClick}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-bg-surface text-white/80 hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-blue-600 text-white/90 hover:bg-blue-700 transition-colors"
           >
             <Plus size={16} />
             <span className="text-[13px] font-medium">新增</span>
@@ -27,7 +27,7 @@ export default function NavBar({ onAddClick, onSidebarToggle }: NavBarProps) {
         )}
         <button
           onClick={onSidebarToggle}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-bg-surface text-white/80 hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-blue-600 text-white/90 hover:bg-blue-700 transition-colors"
         >
           <PanelRight size={16} />
           <span className="text-[13px] font-medium">侧边栏</span>

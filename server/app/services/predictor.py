@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.config import MODEL_DIR, OVERLAP_DAYS, PRED_OUTPUT_DAYS, REAL_DATA_DAYS
+from app.config import MODEL_DIR
 
 # 将项目根目录加入 sys.path，以便导入 app.model
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -31,7 +31,13 @@ def _load_predictor():
     _predictor = KronosPredictor(model, tokenizer, max_context=512)
 
 
-def predict(real_data: list[dict], dates: list[str]) -> list[dict]:
+def predict(
+    real_data: list[dict],
+    dates: list[str],
+    real_data_days: int,
+    pred_output_days: int,
+    overlap_days: int,
+) -> list[dict]:
     """
     对实际行情数据进行 K 线预测。
 
@@ -45,8 +51,8 @@ def predict(real_data: list[dict], dates: list[str]) -> list[dict]:
     _load_predictor()
 
     # 模型输入为前 realDataDays - overlapDays 天的实际数据
-    lookback = min(REAL_DATA_DAYS - OVERLAP_DAYS, len(real_data))
-    pred_len = PRED_OUTPUT_DAYS
+    lookback = min(real_data_days - overlap_days, len(real_data))
+    pred_len = pred_output_days
 
     df = pd.DataFrame(real_data[:lookback])
     df = df.rename(
@@ -89,6 +95,7 @@ def predict(real_data: list[dict], dates: list[str]) -> list[dict]:
         T=1.0,
         top_p=0.9,
         sample_count=1,
+        verbose=False,
     )
 
     # 将预测结果四舍五入后转为字典列表

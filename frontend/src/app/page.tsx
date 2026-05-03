@@ -6,14 +6,19 @@ import { useRouter } from 'next/navigation';
 import NavBar from '@/components/NavBar';
 import Sidebar from '@/components/Sidebar';
 import SearchBox from '@/components/SearchBox';
+import type { KLineParams } from '@/services/api';
 
 export default function HomePage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // 搜索后跳转到股票详情页
-  const handleSearch = (code: string) => {
-    router.push(`/stock/${code}`);
+  const handleSearch = (code: string, params: KLineParams) => {
+    const qs = new URLSearchParams({
+      realDataDays: String(params.realDataDays),
+      predOutputDays: String(params.predOutputDays),
+      overlapDays: String(params.overlapDays),
+    }).toString();
+    router.push(`/stock/${code}?${qs}`);
   };
 
   return (

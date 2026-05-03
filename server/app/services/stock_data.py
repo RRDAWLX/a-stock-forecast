@@ -16,8 +16,6 @@ _req.Session.__init__ = _patched_init
 import akshare as ak  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from app.config import REAL_DATA_DAYS  # noqa: E402
-
 # 股票名称缓存，避免重复网络请求
 _name_cache: dict[str, str] = {}
 
@@ -66,7 +64,7 @@ def _get_stock_name(code: str) -> str:
     return _name_cache.get(raw, raw)
 
 
-def _fetch_eastmoney(code: str):
+def _fetch_eastmoney(code: str, real_data_days: int):
     """从东方财富数据源获取股票日线行情（前复权）。"""
     raw_code = code.strip()
     df: pd.DataFrame = ak.stock_zh_a_hist(
@@ -78,7 +76,7 @@ def _fetch_eastmoney(code: str):
         raise ValueError(f"未找到股票数据: {raw_code}")
 
     # 取最近 REAL_DATA_DAYS 天的数据
-    df = df.tail(REAL_DATA_DAYS).reset_index(drop=True)
+    df = df.tail(real_data_days).reset_index(drop=True)
 
     # 计算当前价格与涨跌幅
     stock_name = str(df.iloc[-1]["股票名称"])
@@ -112,7 +110,7 @@ def _fetch_eastmoney(code: str):
     }
 
 
-def _fetch_tencent(code: str):
+def _fetch_tencent(code: str, real_data_days: int):
     """从腾讯数据源获取股票日线行情（前复权），作为东方财富的备选。"""
     raw_code = code.strip()
     tx_prefix = _tx_prefix(raw_code)
@@ -124,7 +122,7 @@ def _fetch_tencent(code: str):
     if df.empty:
         raise ValueError(f"未找到股票数据: {raw_code}")
 
-    df = df.tail(REAL_DATA_DAYS).reset_index(drop=True)
+    df = df.tail(real_data_days).reset_index(drop=True)
 
     stock_name = _get_stock_name(raw_code)
     current_price = float(df.iloc[-1]["close"])
@@ -158,23 +156,24 @@ def _fetch_tencent(code: str):
     }
 
 
-def fetch_stock_data(code: str) -> dict:
+def fetch_stock_data(code: str, real_data_days: int) -> dict:
     """
     获取股票行情数据，优先使用东方财富源，失败后降级到腾讯源。
 
     Args:
         code: 股票代码（支持简写如 600519 或标准格式如 600519.SH）
+        real_data_days: 获取最近多少天的实际数据
 
     Returns:
         包含 stock_name/stock_code/current_price/price_change/real_data/dates 的字典
     """
     raw_code = code.strip()
     try:
-        return _fetch_eastmoney(raw_code)
+        return _fetch_eastmoney(raw_code, real_data_days)
     except Exception:
         pass
     try:
-        return _fetch_tencent(raw_code)
+        return _fetch_tencent(raw_code, real_data_days)
     except (ValueError, IndexError) as e:
         raise ValueError(f"未找到股票数据: {raw_code}") from e
     except Exception as e:

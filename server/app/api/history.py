@@ -34,6 +34,7 @@ async def history_stream() -> EventSourceResponse:
     之后在每次搜索时通过 notify_clients 推送更新，
     空闲时每 30 秒发送心跳包保持连接。
     """
+
     async def event_generator() -> AsyncGenerator:
         queue: asyncio.Queue = asyncio.Queue()
         _connections.append(queue)

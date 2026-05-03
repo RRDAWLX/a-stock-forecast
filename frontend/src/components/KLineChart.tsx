@@ -4,6 +4,7 @@
  * - 预测 K 线使用仅边框/影线（浅红浅绿），与实际 K 线视觉区分
  * - 支持通过 ToggleButton 切换显隐
  * - 重叠区域用于预测与实际的视觉平滑衔接
+ * - 切换显隐时横纵坐标保持不变
  */
 'use client';
 
@@ -32,6 +33,9 @@ export default function KLineChart({ realData, predData, dates }: KLineChartProp
   // 控制实际/预测 K 线的显隐状态
   const [showReal, setShowReal] = useState(true);
   const [showPred, setShowPred] = useState(true);
+
+  // 保存合并后的价格范围，用于切换显隐时锁定坐标
+  const priceRangeRef = useRef<{ min: number; max: number } | null>(null);
 
   // 初始化图表：创建实例、添加系列、监听容器尺寸变化
   useEffect(() => {
@@ -79,6 +83,25 @@ export default function KLineChart({ realData, predData, dates }: KLineChartProp
       wickDownColor: '#4ADE80',
     });
 
+    // 使用 autoscaleInfoProvider 让两个系列始终基于合并数据范围缩放，
+    // 避免切换显隐时坐标轴跳动
+    const makeAutoscaleProvider = () => () => {
+      const range = priceRangeRef.current;
+      if (range) {
+        const padding = (range.max - range.min) * 0.05;
+        return {
+          priceRange: {
+            minValue: range.min - padding,
+            maxValue: range.max + padding,
+          },
+        };
+      }
+      return null;
+    };
+
+    realSeries.applyOptions({ autoscaleInfoProvider: makeAutoscaleProvider() });
+    predSeries.applyOptions({ autoscaleInfoProvider: makeAutoscaleProvider() });
+
     realSeriesRef.current = realSeries;
     predSeriesRef.current = predSeries;
 
@@ -107,7 +130,6 @@ export default function KLineChart({ realData, predData, dates }: KLineChartProp
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const allData: CandlestickData<Time>[] = [];
     const realSeriesData: CandlestickData<Time>[] = [];
     const predSeriesData: CandlestickData<Time>[] = [];
 
@@ -115,15 +137,13 @@ export default function KLineChart({ realData, predData, dates }: KLineChartProp
     for (let i = 0; i < realData.length; i++) {
       const d = realData[i];
       const time = dates[i] as Time;
-      const item: CandlestickData<Time> = {
+      realSeriesData.push({
         time,
         open: d.open,
         high: d.high,
         low: d.low,
         close: d.close,
-      };
-      realSeriesData.push(item);
-      allData.push(item);
+      });
     }
 
     // 构造预测 K 线数据，日期从重叠区域开始
@@ -132,23 +152,35 @@ export default function KLineChart({ realData, predData, dates }: KLineChartProp
       const d = predData[i];
       const dateIdx = overlapStart + i;
       const time = dates[dateIdx] as Time;
-      const item: CandlestickData<Time> = {
+      predSeriesData.push({
         time,
         open: d.open,
         high: d.high,
         low: d.low,
         close: d.close,
-      };
-      predSeriesData.push(item);
-      allData.push(item);
+      });
     }
 
     realSeriesRef.current?.setData(realSeriesData);
     predSeriesRef.current?.setData(predSeriesData);
 
-    // 自适应时间轴并固定价格轴
+    // 计算合并后的价格范围并保存
+    let priceMin = Infinity;
+    let priceMax = -Infinity;
+    for (const d of realSeriesData) {
+      if (d.low < priceMin) priceMin = d.low;
+      if (d.high > priceMax) priceMax = d.high;
+    }
+    for (const d of predSeriesData) {
+      if (d.low < priceMin) priceMin = d.low;
+      if (d.high > priceMax) priceMax = d.high;
+    }
+    if (priceMin !== Infinity && priceMax !== -Infinity) {
+      priceRangeRef.current = { min: priceMin, max: priceMax };
+    }
+
+    // 自适应时间轴
     chartRef.current.timeScale().fitContent();
-    chartRef.current.priceScale('right').applyOptions({ autoScale: false });
   }, [realData, predData, dates]);
 
   // 切换实际 K 线显隐

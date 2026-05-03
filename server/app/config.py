@@ -22,10 +22,6 @@ _config = _load_config()
 
 FRONTEND_PORT: int = _config["frontend"]
 BACKEND_PORT: int = _config["backend"]
-REAL_DATA_DAYS: int = _config["realDataDays"]
-PRED_OUTPUT_DAYS: int = _config["predOutputDays"]
-OVERLAP_DAYS: int = _config["overlapDays"]
-
 # 项目根目录（server/）
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -35,4 +31,3 @@ MODEL_DIR = BASE_DIR / "models"
 DATA_DIR = BASE_DIR / "data"
 # 搜索历史 JSON 文件路径
 SEARCH_HISTORY_FILE = DATA_DIR / "search_history.json"
-

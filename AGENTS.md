@@ -38,7 +38,7 @@ Pre-commit hook (husky + lint-staged) runs these automatically. See `package.jso
 
 - **Config hub**: Root `config.jsonc` — central source of truth for ports (`frontend`, `backend`) and K-line parameters (`realDataDays`, `predOutputDays`, `overlapDays`). Both frontend and backend read this file at startup.
 - **Backend entry**: `server/app/main.py` → FastAPI app with CORS `allow_origins=["*"]`
-- **API routes**: `/api/stock?code=600519` (K-line + prediction), `/api/history` (SSE search history)
+- **API routes**: `/api/stock?code=600519&realDataDays=120&predOutputDays=30&overlapDays=20` (K-line + prediction), `/api/history` (SSE search history)
 - **Prediction flow**: `app/api/stock.py` → `app/services/predictor.py` → `KronosPredictor.predict()` in `app/model/`
 - **Frontend**: Next.js App Router + TypeScript + Tailwind CSS v4 + lightweight-charts
 

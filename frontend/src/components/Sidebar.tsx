@@ -4,19 +4,20 @@
  */
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { createHistoryEventSource } from '@/services/api';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { createHistoryEventSource, type KLineParams } from '@/services/api';
 import type { SearchHistoryItem } from '@/types';
 
 interface SidebarProps {
   open: boolean;
-  onSelect: (code: string) => void;
+  onSelect: (code: string, params: KLineParams) => void;
 }
 
 export default function Sidebar({ open, onSelect }: SidebarProps) {
-  const [history, setHistory] = useState<SearchHistoryItem[]>([]);
+  const [history, setHistory] = useState<SearchHistoryItem[] | null>(null);
 
-  // 建立 SSE 连接，监听搜索历史更新，断线后 3 秒自动重连
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const connectSSE = useCallback(() => {
     const es = createHistoryEventSource();
     const handleMessage = (event: MessageEvent) => {
@@ -29,14 +30,17 @@ export default function Sidebar({ open, onSelect }: SidebarProps) {
         // 忽略 JSON 解析错误
       }
     };
-    // 监听默认消息和自定义 update 事件
     es.onmessage = handleMessage;
     es.addEventListener('update', handleMessage as EventListener);
     es.onerror = () => {
       es.close();
-      setTimeout(connectSSE, 3000);
+      reconnectTimerRef.current = setTimeout(connectSSE, 3000);
     };
     return () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       es.removeEventListener('update', handleMessage as EventListener);
       es.close();
     };
@@ -56,21 +60,35 @@ export default function Sidebar({ open, onSelect }: SidebarProps) {
       </div>
       <div className="w-[220px] self-center h-px bg-border-subtle" />
       <div className="flex-1 overflow-y-auto px-0">
-        {history.map((item) => (
+        {history?.map((item, index) => (
           <button
-            key={item.code}
-            onClick={() => onSelect(item.code)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-sm hover:bg-[#F1F5F9] transition-colors text-left cursor-pointer"
+            key={`${item.code}-${item.time}-${index}`}
+            onClick={() =>
+              onSelect(item.code, {
+                realDataDays: item.realDataDays,
+                predOutputDays: item.predOutputDays,
+                overlapDays: item.overlapDays,
+              })
+            }
+            className="w-full flex flex-col gap-1 px-3.5 py-2.5 rounded-sm hover:bg-[#F1F5F9] transition-colors text-left cursor-pointer"
           >
-            <span className="text-[13px] font-medium text-text-primary w-20 truncate">
-              {item.name}
-            </span>
-            <span className="text-xs text-text-muted font-mono">{item.code}</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-[13px] font-medium text-text-primary w-20 truncate">
+                {item.name}
+              </span>
+              <span className="text-xs text-text-muted font-mono">{item.code}</span>
+            </div>
+            <div className="flex gap-2 text-[11px] text-text-muted">
+              <span>实际{item.realDataDays}天</span>
+              <span>预测{item.predOutputDays}天</span>
+              <span>重叠{item.overlapDays}天</span>
+            </div>
           </button>
         ))}
-        {history.length === 0 && (
+        {history && history.length === 0 && (
           <p className="text-xs text-text-muted text-center py-4">暂无记录</p>
         )}
+        {history === null && <p className="text-xs text-text-muted text-center py-4">加载中...</p>}
       </div>
     </aside>
   );
