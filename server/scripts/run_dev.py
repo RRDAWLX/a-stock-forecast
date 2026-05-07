@@ -3,6 +3,11 @@
 用法：cd server && uv run scripts/run_dev.py
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import uvicorn
 from app.config import BACKEND_PORT, FRONTEND_PORT
 
